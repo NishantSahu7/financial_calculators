@@ -1,56 +1,54 @@
-import matplotlib.pyplot as plt
-import io
-import base64
-import inflect
+from flask import Blueprint, request, jsonify
+from utils.inflation_calculator import calculate_standard_of_living
+from utils.chart_generator import generate_chart
 
-def calculate_standard_of_living(data):
+standard_of_living_bp = Blueprint('standard_of_living', __name__)
+
+@standard_of_living_bp.route('/standard_of_living', methods=['POST'])
+def standard_of_living():
     try:
-        current_expense = float(data.get("current_expense", 0))
-        inflation_rate = float(data.get("inflation_rate", 0))
-        years = int(data.get("years", 0))
-        include_dependability = data.get("include_dependability", False)
-        additional_expenses = data.get("additional_expenses", [])
+        data = request.get_json()
 
-        p = inflect.engine()
-        yearly_expenses = []
+        # Safely parse numeric fields
+        initial_expense = float(data.get("initial_expense", 0) or 0)
+        inflation_rate = float(data.get("inflation_rate", 0) or 0)
+        years = int(data.get("years", 0) or 0)
 
-        for year in range(1, years + 1):
-            adjusted_expense = current_expense * ((1 + inflation_rate / 100) ** year)
+        dependability_amount = float(data.get("dependability_amount", 0) or 0)
+        dependability_year = int(data.get("dependability_year", 0) or 0)
 
-            # Add optional dependability expenses
-            if include_dependability and additional_expenses:
-                for item in additional_expenses:
-                    if int(item.get("year", 0)) == year:
-                        adjusted_expense += float(item.get("amount", 0))
+        life_event_amount = float(data.get("life_event_amount", 0) or 0)
+        life_event_year = int(data.get("life_event_year", 0) or 0)
 
-            yearly_expenses.append({
-                "year": year,
-                "expense_numeric": round(adjusted_expense, 2),
-                "expense_words": p.number_to_words(round(adjusted_expense, 2)) + " rupees"
-            })
+        # Debug: Log received data (optional)
+        print("Parsed Data:", {
+            "initial_expense": initial_expense,
+            "inflation_rate": inflation_rate,
+            "years": years,
+            "dependability_amount": dependability_amount,
+            "dependability_year": dependability_year,
+            "life_event_amount": life_event_amount,
+            "life_event_year": life_event_year
+        })
 
-        # Plotting
-        years_list = [x["year"] for x in yearly_expenses]
-        values_list = [x["expense_numeric"] for x in yearly_expenses]
+        # Perform calculation
+        expenses = calculate_standard_of_living(
+            initial_expense,
+            inflation_rate,
+            years,
+            dependability_amount,
+            dependability_year,
+            life_event_amount,
+            life_event_year
+        )
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(years_list, values_list, marker='o', linestyle='-', color='teal')
-        plt.title("Future Cost of Living Adjusted for Inflation")
-        plt.xlabel("Year")
-        plt.ylabel("Estimated Annual Expense (₹)")
-        plt.grid(True)
+        # Generate chart
+        chart_base64 = generate_chart(expenses)
 
-        # Save plot to base64 string
-        img_bytes = io.BytesIO()
-        plt.savefig(img_bytes, format='png')
-        img_bytes.seek(0)
-        base64_image = base64.b64encode(img_bytes.read()).decode('utf-8')
-        plt.close()
-
-        return {
-            "expenses": yearly_expenses,
-            "chart_base64": base64_image
-        }
+        return jsonify({
+            "expenses": expenses,
+            "chart_base64": chart_base64
+        })
 
     except Exception as e:
-        return {"error": str(e)}
+        return jsonify({"error": str(e)}), 500
