@@ -18,5 +18,8 @@ if __name__ == "__main__":
     print("Registered Routes:")
     for rule in app.url_map.iter_rules():
         print(rule)  # ✅ Debugging: Check if the correct route is listed
-    app.run(debug=True, port=5001)
+    import os
+
+port = int(os.environ.get("PORT", 5000))
+app.run(host="0.0.0.0", port=port)
 
