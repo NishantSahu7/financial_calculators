@@ -7,7 +7,8 @@ standard_of_living_bp = Blueprint('standard_of_living', __name__)
 @standard_of_living_bp.route('/standard_of_living', methods=['POST'])
 def standard_of_living():
     try:
-        data = request.get_json()
+        data = request.get_json(force=True)
+        print("🔥 Raw Incoming Data from Frontend:", data)
 
         # Safely parse numeric fields
         initial_expense = float(data.get("initial_expense", 0) or 0)
@@ -20,8 +21,7 @@ def standard_of_living():
         life_event_amount = float(data.get("life_event_amount", 0) or 0)
         life_event_year = int(data.get("life_event_year", 0) or 0)
 
-        # Debug: Log received data (optional)
-        print("Parsed Data:", {
+        print("✅ Parsed Values:", {
             "initial_expense": initial_expense,
             "inflation_rate": inflation_rate,
             "years": years,
@@ -51,4 +51,5 @@ def standard_of_living():
         })
 
     except Exception as e:
+        print("❌ Exception:", str(e))
         return jsonify({"error": str(e)}), 500
